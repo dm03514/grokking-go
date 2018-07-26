@@ -1,2 +1,2 @@
 # debugging-go
-A Repo for Learning go debugging tools
+A Repo for Learning go analysis
