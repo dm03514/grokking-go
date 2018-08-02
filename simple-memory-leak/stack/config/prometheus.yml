@@ -32,7 +32,7 @@ scrape_configs:
   - job_name: "node"
     scrape_interval: "15s"
     static_configs:
-      - targets: ['exporter:9100']
+      - targets: ['localhost:9100']
 
   - job_name: "memleakservice"
     scrape_interval: "15s"
