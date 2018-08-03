@@ -1,0 +1,30 @@
+version: "3"
+services:
+  prom:
+    image: prom/prometheus:v2.1.0
+    volumes:
+     - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: "--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"
+    network_mode: host
+    ports:
+     - 9090:9090
+    depends_on:
+     - exporter
+  exporter:
+    image: prom/node-exporter:latest
+    ports:
+     - 9100:9100
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_USERS_DEFAULT_THEME=light
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Editor
+    volumes:
+      - ./config/grafana_prometheus_datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+      - ./config/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./config/dashboard.json:/var/lib/grafana/dashboards/dashboard.json
+    ports:
+     - 3000:3000
+    depends_on:
+      - prom
