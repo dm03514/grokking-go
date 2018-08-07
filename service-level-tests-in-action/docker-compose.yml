@@ -1,0 +1,22 @@
+version: '3'
+services:
+  postgres:
+    image: postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    volumes:
+      - ./config:/docker-entrypoint-initdb.d
+
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4567-4583:4567-4583"
+      - "${PORT_WEB_UI-8080}:${PORT_WEB_UI-8080}"
+    environment:
+      - SERVICES=${SERVICES- }
+      - HOSTNAME_EXTERNAL=${HOSTNAME_EXTERNAL- }
+      - HOSTNAME=${HOSTNAME- }
+      - DOCKER_HOST=unix:///var/run/docker.sock

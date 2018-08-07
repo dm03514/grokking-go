@@ -1,0 +1,2 @@
+awscli==1.15.76
+docker-compose==1.22.0
