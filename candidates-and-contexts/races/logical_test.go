@@ -11,18 +11,12 @@ import (
 	"time"
 )
 
-var numRequestsToMake int
-var numConcurrentRequests int
-
-func init() {
-	flag.IntVar(&numRequestsToMake, "total-requests", 1000, "total # of requests to make")
-	flag.IntVar(&numConcurrentRequests, "concurrent-requests", 10, "pool size, request concurrency")
-}
-
-func TestExplicitRace(t *testing.T) {
+func TestLogicalRace(t *testing.T) {
 	flag.Parse()
 
-	reqCount := Counter{}
+	reqCount := SynchronizedCounter{
+		mu: &sync.Mutex{},
+	}
 
 	go func() {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +37,9 @@ func TestExplicitRace(t *testing.T) {
 	// start a pool of 100 workers all making requests
 	for i := 0; i < numConcurrentRequests; i++ {
 		go func() {
+
 			defer wg.Done()
+
 			for range requestsChan {
 				res, err := http.Get("http://localhost:8080/")
 				if err != nil {

@@ -11,34 +11,31 @@ import (
 	"time"
 )
 
-var numRequestsToMake int
-var numConcurrentRequests int
-
-func init() {
-	flag.IntVar(&numRequestsToMake, "total-requests", 1000, "total # of requests to make")
-	flag.IntVar(&numConcurrentRequests, "concurrent-requests", 10, "pool size, request concurrency")
-}
-
-func TestExplicitRace(t *testing.T) {
+func TestDesignNoRace(t *testing.T) {
 	flag.Parse()
 
 	reqCount := Counter{}
 
+	var wg sync.WaitGroup
+	wg.Add(numConcurrentRequests)
+	countChan := make(chan struct{})
+	go func() {
+		for range countChan {
+			reqCount.Inc()
+			fmt.Printf("handling request: %d\n", reqCount.Value())
+		}
+	}()
+
 	go func() {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			value := reqCount.Value()
-			fmt.Printf("handling request: %d\n", value)
 			time.Sleep(1 * time.Nanosecond)
-			reqCount.Set(value + 1)
 			fmt.Fprintln(w, "Hello, client")
+			countChan <- struct{}{}
 		}))
 		log.Fatal(http.ListenAndServe(":8080", nil))
 	}()
 
 	requestsChan := make(chan int)
-
-	var wg sync.WaitGroup
-	wg.Add(numConcurrentRequests)
 
 	// start a pool of 100 workers all making requests
 	for i := 0; i < numConcurrentRequests; i++ {
@@ -66,6 +63,7 @@ func TestExplicitRace(t *testing.T) {
 	}()
 
 	wg.Wait()
+	close(countChan)
 
 	fmt.Printf("Num Requests TO Make: %d\n", numRequestsToMake)
 	fmt.Printf("Num Handled: %d\n", reqCount.Value())
