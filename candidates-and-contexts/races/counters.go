@@ -69,22 +69,3 @@ func (c *MisSynchronizedCounter) Set(v int) {
 
 	c.count = v
 }
-
-type ValuedCounter struct {
-	mu    *sync.Mutex
-	count int
-}
-
-func (c *ValuedCounter) Value() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return c.count
-}
-
-func (c *ValuedCounter) Set(v int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.count = v
-}
