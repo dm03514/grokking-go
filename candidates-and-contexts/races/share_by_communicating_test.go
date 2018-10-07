@@ -66,7 +66,7 @@ func TestDesignNoRace(t *testing.T) {
 	close(countChan)
 
 	fmt.Printf("Num Requests TO Make: %d\n", numRequestsToMake)
-	fmt.Printf("Num Handled: %d\n", reqCount.Value())
+	fmt.Printf("Final Count: %d\n", reqCount.Value())
 	if numRequestsToMake != reqCount.Value() {
 		t.Errorf("expected %d requests: received %d", numRequestsToMake, reqCount.Value())
 	}

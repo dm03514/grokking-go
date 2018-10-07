@@ -49,7 +49,7 @@ type MisSynchronizedCounter struct {
 	count int
 }
 
-func (c *MisSynchronizedCounter) Inc() {
+func (c MisSynchronizedCounter) Inc() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
