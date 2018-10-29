@@ -7,10 +7,11 @@ static_resources:
     - filters:
       - name: envoy.http_connection_manager
         config:
+          use_remote_address: true
           stat_prefix: ingress_http
           codec_type: AUTO
           route_config:
-            name: local_api
+            name: remote_api
             virtual_hosts:
             - name: api
               domains:
@@ -21,7 +22,17 @@ static_resources:
                 route:
                   cluster: api
 
+              rate_limits:
+                - stage: 0
+                  actions:
+                    - {generic_key: {descriptor_value: "default"}}
+
           http_filters:
+          - name: envoy.rate_limit
+            config:
+              domain: apis
+              stage: 0
+
           - name: envoy.router
 
   clusters:
@@ -35,10 +46,21 @@ static_resources:
         port_value: 8080
 
   - name: rate_limit_cluster
-    type: STATIC
+    type: strict_dns
     connect_timeout: 0.25s
-    lb_policy: ROUND_ROBIN
-    hosts: [{ socket_address: { address: 127.0.0.1, port_value: 8081 }}]
+    lb_policy: round_robin
+    http2_protocol_options: {}
+    hosts:
+    - socket_address:
+        address: localhost
+        port_value: 8081
+
+
+rate_limit_service:
+    grpc_service:
+        envoy_grpc:
+            cluster_name: rate_limit_cluster
+        timeout: 0.25s
 
 admin:
   access_log_path: "/dev/null"

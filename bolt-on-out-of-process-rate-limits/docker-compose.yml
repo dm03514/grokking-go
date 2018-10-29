@@ -1,0 +1,56 @@
+version: "3"
+services:
+  fakeapi:
+    build: .
+    command: go run /go/src/github.com/dm03514/fakapi/cmd/fakeapi/main.go
+    volumes:
+      - .:/go/src/github.com/dm03514/fakapi
+    deploy:
+      resources:
+        limits:
+          memory: 20M
+    ports:
+      - 8080:8080
+
+  envoy:
+    image: envoyproxy/envoy
+    network_mode: host
+    volumes:
+      - ./config/envoy.yaml:/tmp/envoy.yaml
+    ports:
+      - 10000:10000
+      - 9901:9901
+    command: envoy -c /tmp/envoy.yaml
+
+  prom:
+    image: prom/prometheus:v2.1.0
+    volumes:
+     - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: "--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"
+    network_mode: host
+    ports:
+     - 9090:9090
+    depends_on:
+     - exporter
+     - envoy
+
+  exporter:
+    image: prom/node-exporter:latest
+    ports:
+     - 9100:9100
+
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_USERS_DEFAULT_THEME=light
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Editor
+    volumes:
+      - ./config/grafana_prometheus_datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+      - ./config/dashboards.yml:/etc/grafana/provisioning/dashboards/all.yml
+      - ./config/dashboards/api.json:/var/lib/grafana/dashboards/api.json
+      - ./config/dashboards/envoy.json:/var/lib/grafana/dashboards/envoy.json
+    ports:
+     - 3000:3000
+    depends_on:
+      - prom
