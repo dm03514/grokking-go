@@ -18,10 +18,12 @@ static_resources:
               routes:
               - match:
                   prefix: "/"
-                route
+                route:
                   cluster: api
+
           http_filters:
           - name: envoy.router
+
   clusters:
   - name: api
     connect_timeout: 1s
@@ -31,4 +33,17 @@ static_resources:
     - socket_address:
         address: localhost
         port_value: 8080
+
+  - name: rate_limit_cluster
+    type: STATIC
+    connect_timeout: 0.25s
+    lb_policy: ROUND_ROBIN
+    hosts: [{ socket_address: { address: 127.0.0.1, port_value: 8081 }}]
+
+admin:
+  access_log_path: "/dev/null"
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
 
