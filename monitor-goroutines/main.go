@@ -41,7 +41,7 @@ func (s *SafeCounter) Inc() {
 }
 
 
-func NewTestSender(ctx context.Context, wg *sync.WaitGroup, counterCh chan<- int, triggerSend <-chan struct{}) {
+func NewTestSender(ctx context.Context, wg *sync.WaitGroup, incrementFn func(), triggerSend <-chan struct{}) {
 	go func() {
 		defer wg.Done()
 
@@ -51,8 +51,7 @@ func NewTestSender(ctx context.Context, wg *sync.WaitGroup, counterCh chan<- int
 					if !ok {
 						return
 					}
-
-					counterCh <- 1
+					incrementFn()
 
 				case <-ctx.Done():
 					fmt.Printf("new sender context cancelled")

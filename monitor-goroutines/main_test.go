@@ -55,7 +55,9 @@ func benchmarkCounterMonitor(numProducingGoroutines int, b *testing.B) {
 		NewTestSender(
 			ctx,
 			&wg,
-			in,
+			func() {
+				in <- 1
+			},
 			triggerSend,
 		)
 		chs = append(chs, triggerSend)
@@ -70,11 +72,6 @@ func benchmarkCounterMonitor(numProducingGoroutines int, b *testing.B) {
 		// get a random
 		toSend := chs[r1.Intn(len(chs))]
 		toSend <- struct{}{}
-		/*
-		for _, toSend := range chs {
-			toSend <- struct{}{}
-		}
-		*/
 	}
 
 	for _, toSend := range chs {
@@ -110,6 +107,11 @@ func BenchmarkCounterMonitor10000Goroutines(b *testing.B) {
 }
 
 func benchmarkSafeCounter(numProducingGoroutines int, b *testing.B) {
+	var wg = sync.WaitGroup{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sc := SafeCounter{
 		mu: &sync.Mutex{},
 	}
@@ -117,9 +119,62 @@ func benchmarkSafeCounter(numProducingGoroutines int, b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			sc.Inc()
 		}
+		return
 	}
+
+	// instantiate the correct # of senders
+	chs := []chan struct{}{}
+	for i := 0; i < numProducingGoroutines; i++ {
+		wg.Add(1)
+		triggerSend := make(chan struct{})
+		NewTestSender(
+			ctx,
+			&wg,
+			func() {
+				sc.Inc()
+			},
+			triggerSend,
+		)
+		chs = append(chs, triggerSend)
+	}
+
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+
+	// we want to only do N writes across all go routines
+	// ie trying to test contention amount routines
+	for n := 0; n < b.N; n++ {
+		// get a random
+		toSend := chs[r1.Intn(len(chs))]
+		toSend <- struct{}{}
+	}
+
+	for _, toSend := range chs {
+		close(toSend)
+	}
+	wg.Wait()
 }
 
 func BenchmarkSafeCounterFromMainGoroutine(b *testing.B) {
 	benchmarkSafeCounter(0, b)
+}
+
+func BenchmarkSafeCounter1Goroutine(b *testing.B) {
+	benchmarkSafeCounter(1, b)
+}
+
+func BenchmarkSafeCounter10Goroutine(b *testing.B) {
+	benchmarkSafeCounter(10, b)
+}
+
+func BenchmarkSafeCounter100Goroutine(b *testing.B) {
+	benchmarkSafeCounter(100, b)
+}
+
+func BenchmarkSafeCounter1000Goroutine(b *testing.B) {
+	benchmarkSafeCounter(1000, b)
+}
+
+func BenchmarkSafeCounter10000Goroutine(b *testing.B) {
+	benchmarkSafeCounter(10000, b)
 }
