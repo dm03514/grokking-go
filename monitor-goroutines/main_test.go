@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sync"
 	"testing"
@@ -15,7 +14,7 @@ func TestCounterMonitor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	wg.Add(1)
-	in := NewCounterMonitor(ctx)
+	in := NewCounterMonitor(ctx, &wg,0)
 	in <- 1
 	close(in)
 }
@@ -32,14 +31,14 @@ func TestSafeCounter(t *testing.T) {
 	}
 }
 
-func benchmarkCounterMonitor(numProducingGoroutines int, b *testing.B) {
-	var wg = sync.WaitGroup{}
-
+func benchmarkCounterMonitor(numProducingGoroutines int, channelBufferSize int, b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	in := NewCounterMonitor(ctx)
-	fmt.Printf("Num producing goroutines: %d\n", numProducingGoroutines)
+	var counterMonitorWG = sync.WaitGroup{}
+	counterMonitorWG.Add(1)
+	in := NewCounterMonitor(ctx, &counterMonitorWG, channelBufferSize)
+	// fmt.Printf("Num producing goroutines: %d\n", numProducingGoroutines)
 	if numProducingGoroutines == 0 {
 		for n := 0; n < b.N; n++ {
 			in <- 1
@@ -49,6 +48,7 @@ func benchmarkCounterMonitor(numProducingGoroutines int, b *testing.B) {
 
 	// instantiate the correct # of senders
 	chs := []chan struct{}{}
+	var wg = sync.WaitGroup{}
 	for i := 0; i < numProducingGoroutines; i++ {
 		wg.Add(1)
 		triggerSend := make(chan struct{})
@@ -77,33 +77,34 @@ func benchmarkCounterMonitor(numProducingGoroutines int, b *testing.B) {
 	for _, toSend := range chs {
 		close(toSend)
 	}
+
 	wg.Wait()
 	close(in)
+	counterMonitorWG.Wait()
 }
 
-
 func BenchmarkCounterMonitorFromMainGoroutine(b *testing.B) {
-	benchmarkCounterMonitor(0, b)
+	benchmarkCounterMonitor(0, 0, b)
 }
 
 func BenchmarkCounterMonitor1Goroutine(b *testing.B) {
-	benchmarkCounterMonitor(1, b)
+	benchmarkCounterMonitor(1, 0, b)
 }
 
 func BenchmarkCounterMonitor10Goroutines(b *testing.B) {
-	benchmarkCounterMonitor(10, b)
+	benchmarkCounterMonitor(10, 0, b)
 }
 
 func BenchmarkCounterMonitor100Goroutines(b *testing.B) {
-	benchmarkCounterMonitor(100, b)
+	benchmarkCounterMonitor(100, 0, b)
 }
 
 func BenchmarkCounterMonitor1000Goroutines(b *testing.B) {
-	benchmarkCounterMonitor(1000, b)
+	benchmarkCounterMonitor(1000, 0, b)
 }
 
 func BenchmarkCounterMonitor10000Goroutines(b *testing.B) {
-	benchmarkCounterMonitor(10000, b)
+	benchmarkCounterMonitor(10000, 0, b)
 }
 
 func benchmarkSafeCounter(numProducingGoroutines int, b *testing.B) {
