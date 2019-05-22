@@ -20,7 +20,7 @@ func TestCounterMonitor(t *testing.T) {
 }
 
 func TestSafeCounter(t *testing.T) {
-	sc := SafeCounter{
+	sc := &SafeCounter{
 		mu: &sync.Mutex{},
 	}
 	for i := 0; i < 10; i++ {
@@ -107,13 +107,37 @@ func BenchmarkCounterMonitor10000Goroutines(b *testing.B) {
 	benchmarkCounterMonitor(10000, 0, b)
 }
 
+func BenchmarkCounterMonitorFromMainGoroutineBuffered(b *testing.B) {
+	benchmarkCounterMonitor(0, 1, b)
+}
+
+func BenchmarkCounterMonitor1GoroutineBuffered(b *testing.B) {
+	benchmarkCounterMonitor(1, 1, b)
+}
+
+func BenchmarkCounterMonitor10GoroutinesBuffered(b *testing.B) {
+	benchmarkCounterMonitor(10, 10, b)
+}
+
+func BenchmarkCounterMonitor100GoroutinesBuffered(b *testing.B) {
+	benchmarkCounterMonitor(100, 100, b)
+}
+
+func BenchmarkCounterMonitor1000GoroutinesBuffered(b *testing.B) {
+	benchmarkCounterMonitor(1000, 1000, b)
+}
+
+func BenchmarkCounterMonitor10000GoroutinesBuffered(b *testing.B) {
+	benchmarkCounterMonitor(10000, 10000, b)
+}
+
 func benchmarkSafeCounter(numProducingGoroutines int, b *testing.B) {
 	var wg = sync.WaitGroup{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sc := SafeCounter{
+	sc := &SafeCounter{
 		mu: &sync.Mutex{},
 	}
 	if numProducingGoroutines == 0 {
