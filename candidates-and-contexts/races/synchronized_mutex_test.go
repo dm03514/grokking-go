@@ -8,28 +8,20 @@ import (
 	"net/http"
 	"sync"
 	"testing"
-	"time"
 )
 
-var numRequestsToMake int
-var numConcurrentRequests int
-
-func init() {
-	flag.IntVar(&numRequestsToMake, "total-requests", 1000, "total # of requests to make")
-	flag.IntVar(&numConcurrentRequests, "concurrent-requests", 10, "pool size, request concurrency")
-}
-
-func TestExplicitRace(t *testing.T) {
+func TestSynchronizedMutexNoRace(t *testing.T) {
 	flag.Parse()
 
-	reqCount := Counter{}
+	var mu = new(sync.Mutex)
+	counter := 0
 
 	go func() {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			value := reqCount.Value()
-			fmt.Printf("handling request: %d\n", value)
-			time.Sleep(1 * time.Nanosecond)
-			reqCount.Set(value + 1)
+			mu.Lock()
+			defer mu.Unlock()
+			counter++
+
 			fmt.Fprintln(w, "Hello, client")
 		}))
 		log.Fatal(http.ListenAndServe(":8080", nil))
@@ -68,8 +60,8 @@ func TestExplicitRace(t *testing.T) {
 	wg.Wait()
 
 	fmt.Printf("Num Requests TO Make: %d\n", numRequestsToMake)
-	fmt.Printf("Final Count: %d\n", reqCount.Value())
-	if numRequestsToMake != reqCount.Value() {
-		t.Errorf("expected %d requests: received %d", numRequestsToMake, reqCount.Value())
+	fmt.Printf("Final Count: %d\n", counter)
+	if numRequestsToMake != counter {
+		t.Errorf("expected %d requests: received %d", numRequestsToMake, counter)
 	}
 }

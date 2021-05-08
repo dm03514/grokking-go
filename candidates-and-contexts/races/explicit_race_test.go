@@ -10,29 +10,31 @@ import (
 	"testing"
 )
 
-func TestMonitorNoRace(t *testing.T) {
+var numRequestsToMake int
+var numConcurrentRequests int
+
+func init() {
+	flag.IntVar(&numRequestsToMake, "total-requests", 1000, "total # of requests to make")
+	flag.IntVar(&numConcurrentRequests, "concurrent-requests", 10, "pool size, request concurrency")
+}
+
+func TestExplicitRace(t *testing.T) {
 	flag.Parse()
 
-	var wg sync.WaitGroup
-	wg.Add(numConcurrentRequests)
-
 	counter := 0
-	countChan := make(chan struct{})
-	go func() {
-		for range countChan {
-			counter++
-		}
-	}()
 
 	go func() {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			counter++
 			fmt.Fprintln(w, "Hello, client")
-			countChan <- struct{}{}
 		}))
 		log.Fatal(http.ListenAndServe(":8080", nil))
 	}()
 
 	requestsChan := make(chan int)
+
+	var wg sync.WaitGroup
+	wg.Add(numConcurrentRequests)
 
 	// start a pool of 100 workers all making requests
 	for i := 0; i < numConcurrentRequests; i++ {
@@ -60,7 +62,6 @@ func TestMonitorNoRace(t *testing.T) {
 	}()
 
 	wg.Wait()
-	close(countChan)
 
 	fmt.Printf("Num Requests TO Make: %d\n", numRequestsToMake)
 	fmt.Printf("Final Count: %d\n", counter)
