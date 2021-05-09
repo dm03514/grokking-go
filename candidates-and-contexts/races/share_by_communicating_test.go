@@ -10,19 +10,30 @@ import (
 	"testing"
 )
 
+type CounterMonitor struct {
+	count int
+}
+
+func (cm *CounterMonitor) Monitor(c chan struct{}) {
+	for range c {
+		cm.count++
+	}
+}
+
+func (cm *CounterMonitor) Count() int {
+	return cm.count
+}
+
 func TestMonitorNoRace(t *testing.T) {
 	flag.Parse()
 
 	var wg sync.WaitGroup
 	wg.Add(numConcurrentRequests)
 
-	counter := 0
 	countChan := make(chan struct{})
-	go func() {
-		for range countChan {
-			counter++
-		}
-	}()
+
+	cm := &CounterMonitor{}
+	go cm.Monitor(countChan)
 
 	go func() {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -63,8 +74,8 @@ func TestMonitorNoRace(t *testing.T) {
 	close(countChan)
 
 	fmt.Printf("Num Requests TO Make: %d\n", numRequestsToMake)
-	fmt.Printf("Final Count: %d\n", counter)
-	if numRequestsToMake != counter {
-		t.Errorf("expected %d requests: received %d", numRequestsToMake, counter)
+	fmt.Printf("Final Count: %d\n", cm.Count())
+	if numRequestsToMake != cm.Count() {
+		t.Errorf("expected %d requests: received %d", numRequestsToMake, cm.Count())
 	}
 }
