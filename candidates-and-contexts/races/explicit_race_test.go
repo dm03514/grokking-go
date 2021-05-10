@@ -25,7 +25,7 @@ func TestExplicitRace(t *testing.T) {
 
 	go func() {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			counter++
+			counter = counter + 1
 			fmt.Fprintln(w, "Hello, client")
 		}))
 		log.Fatal(http.ListenAndServe(":8080", nil))

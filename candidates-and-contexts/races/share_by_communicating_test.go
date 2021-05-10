@@ -16,7 +16,7 @@ type CounterMonitor struct {
 
 func (cm *CounterMonitor) Monitor(c chan struct{}) {
 	for range c {
-		cm.count++
+		cm.count = cm.count + 1
 	}
 }
 

@@ -20,7 +20,7 @@ func TestSynchronizedMutexNoRace(t *testing.T) {
 		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mu.Lock()
 			defer mu.Unlock()
-			counter++
+			counter = counter + 1
 
 			fmt.Fprintln(w, "Hello, client")
 		}))
